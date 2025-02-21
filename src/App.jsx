@@ -1,20 +1,20 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState } from 'react'
 
 import Places from './components/Places.jsx'
 import Modal from './components/Modal.jsx'
 import DeleteConfirmation from './components/DeleteConfirmation.jsx'
 import logoImg from './assets/logo.png'
 import AvailablePlaces from './components/AvailablePlaces.jsx'
-import { updateUserPlaces } from './utils/http.js'
+import { fetchUserPlaces, updateUserPlaces } from './utils/http.js'
 import ErrorPage from './components/ErrorPage.jsx'
+import { useFetch } from './hooks/usePlaces.js'
 
 function App () {
     const selectedPlace = useRef()
-    const [userPlaces, setUserPlaces] = useState([])
-    const [hasError, setHasError] = useState(null)
     const [modalIsOpen, setModalIsOpen] = useState(false)
-    const [isFetching, setisFetching] = useState(true)
     const [isPutting, setIsPutting] = useState(false)
+    const { isFetching, hasError, fetchedData: userPlaces, setFetchedData: setUserPlaces, refetch } = useFetch(fetchUserPlaces)
+    const [hasErrorUpdating, setHasErrorUpdating] = useState(null)
 
     function handleStartRemovePlace (place) {
         if(isPutting) {
@@ -46,7 +46,7 @@ function App () {
             await updateUserPlaces(newPlaces)
 
         } catch (error) {
-            setHasError(error)
+            setHasErrorUpdating(error)
             setUserPlaces(prevPlaces)
         } finally {
             setIsPutting(false)
@@ -65,7 +65,7 @@ function App () {
         try {
             await updateUserPlaces(newPlaces)
         } catch (error) {
-            setHasError(error)
+            setHasErrorUpdating(error)
             setUserPlaces(prevPlaces)
         } finally {
             setIsPutting(false)
@@ -74,31 +74,16 @@ function App () {
     }
 
     const handleError = () => {
-        setHasError(null)
+        setHasErrorUpdating(null)
     }
-
-    useEffect(() => {
-        // eslint-disable-next-line promise/catch-or-return
-        fetch('http://localhost:3000/user-places')
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Failed to fetch user places')
-                }
-
-                return response.json()
-            })
-            .then(data => setUserPlaces(data.places))
-            .catch(error => setHasError(error))
-            .finally(() => {setisFetching(false)})
-    }, [])
 
     return (
         <>
-            <Modal open={hasError} onClose={handleError}>
-                {hasError && (
+            <Modal open={hasErrorUpdating} onClose={handleError}>
+                {hasErrorUpdating && (
                     <ErrorPage
                         title={'An error occurred'}
-                        message={hasError.message}
+                        message={hasErrorUpdating.message}
                         onConfirm={handleError}
                     />
                 )}
@@ -119,14 +104,25 @@ function App () {
                 </p>
             </header>
             <main>
-                <Places
-                    title="I'd like to visit ..."
-                    fallbackText="Select the places you would like to visit below."
-                    isFetching={isFetching}
-                    loadingText={'Fetching places...'}
-                    places={userPlaces}
-                    onSelectPlace={handleStartRemovePlace}
-                />
+                {hasError && (
+                    <ErrorPage
+                        title='An error ocurred'
+                        message={hasError.message || 'Something went wrong'}
+                    />
+                )}
+                {! hasError &&
+                    (<Places
+                        title="I'd like to visit ..."
+                        fallbackText="Select the places you would like to visit below."
+                        isLoading={isFetching}
+                        loadingText={'Fetching places...'}
+                        places={userPlaces}
+                        onSelectPlace={handleStartRemovePlace}
+                    />)
+                }
+                <button onClick={refetch}>
+                    refetch
+                </button>
 
                 <AvailablePlaces onSelectPlace={handleSelectPlace} />
             </main>

@@ -4,7 +4,20 @@
  */
 export const fetchAvailablePlaces = async () => {
     const response = await fetch('http://localhost:3000/places')
+    console.log('places')
 
+    if(!response.ok) {
+        throw new Error(`HTTP Error ${response.status}: ${response.statusText}`)
+    }
+
+    const { places } = await response.json()
+
+    return places
+}
+
+export const fetchUserPlaces = async () => {
+    const response = await fetch('http://localhost:3000/user-places')
+    console.log('user places')
     if(!response.ok) {
         throw new Error(`HTTP Error ${response.status}: ${response.statusText}`)
     }
